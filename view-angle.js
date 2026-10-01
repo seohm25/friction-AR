@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from './vendor/three/three.module.js';
 // Prefer gravity to distinguish a horizontal poster from a wall.
 // Fall back to viewing angle when motion data is unavailable.
 export function standingPose(cameraInPoster,horizontal=null){

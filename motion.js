@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from './vendor/three/three.module.js';
 let gravity=null,lastSample=0,listening=false;
 export function cameraGravity(raw,angle){
  return raw.clone().applyAxisAngle(new THREE.Vector3(0,0,1),-angle*Math.PI/180).normalize();

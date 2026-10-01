@@ -1,7 +1,7 @@
-import * as THREE from 'three';
+import * as THREE from './vendor/three/three.module.js';
 import { towerOrientation } from './tower-layout.js';
 import { startMotion,stopMotion,readCameraGravity } from './motion.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { GLTFLoader } from './vendor/three/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from './vendor/meshopt_decoder.module.js';
 const $ = id => document.getElementById(id);
 let mode='idle', ar, source, sourcePromise, models=[], session=0, stream;
@@ -46,7 +46,7 @@ function close(){
  document.body.classList.remove('active');$('welcome').hidden=false;$('close').hidden=true;status('');busy(false);
  $('start').focus();
 }
-$('close').onclick=()=>{message('');close()};
+$('close').onclick=()=>{message('');close();if(parent!==window)parent.postMessage('friction-ar-close',location.origin);};
 window.addEventListener('pagehide',close);
 document.addEventListener('visibilitychange',()=>{if(document.hidden && mode!=='idle'){close();message('Camera stopped. Tap to start again.')}});
 function pop(model){model.userData.started=performance.now();model.userData.lastFrame=0;model.userData.oriented=false;}
@@ -113,15 +113,23 @@ $('start').onclick=async()=>{
   if(!isSecureContext||!navigator.mediaDevices?.getUserMedia)throw new Error('secure');
   const media=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
   if(token!==session){media.getTracks().forEach(t=>t.stop());return;}stream=media;
- await motionReady;if(token!==session){stopMotion();return;}
-  ar ||= await createAR();
+  // Display the live camera before loading the AR model/tracker on older phones.
+  setActive();status('Preparing AR…');
+  const video=document.createElement('video');video.muted=true;video.autoplay=true;video.playsInline=true;
+  video.setAttribute('playsinline','');video.setAttribute('webkit-playsinline','');
+  video.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover';
+  const videoReady=new Promise((resolve,reject)=>{
+   const timer=setTimeout(()=>reject(new Error('video')),20000);
+   video.onloadedmetadata=()=>{clearTimeout(timer);resolve()};
+   video.onerror=()=>{clearTimeout(timer);reject(new Error('video'))};
+  });
+  video.srcObject=media;$('viewport').prepend(video);
+  await videoReady;await video.play();if(token!==session)return;
+  await motionReady;if(token!==session){stopMotion();return;}
+  if(!ar)ar=await createAR();
   if(token!==session){stopMedia();return;}
-  setActive('ar');status('Preparing AR…');
   ar.renderer.domElement.hidden=false;
   models=ar.anchors.map(a=>a.group.children[0]);models.forEach(pop);
-  const video=document.createElement('video');video.muted=true;video.autoplay=true;video.playsInline=true;video.style.position='absolute';video.srcObject=media;$('viewport').prepend(video);
-  await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('video')),20000);video.onloadedmetadata=()=>{clearTimeout(timer);resolve()};video.onerror=()=>{clearTimeout(timer);reject(new Error('video'))};});
-  await video.play();if(token!==session)return;
   await ar.begin(video,token);if(token!==session)return;
   status('Point your camera at the poster.');message('');busy(false);
  }catch(error){if(token!==session)return;console.error(error);close();message(error?.message==='modelIncomplete'?'The artwork could not be loaded. Please try again later.':error?.name==='NotAllowedError'?'Allow camera access in your browser settings, then tap to try again.':error?.name==='NotFoundError'?'No camera found. Open this link on a phone with a camera.':error?.name==='NotReadableError'?'Your camera is in use. Close the other app and try again.':error?.message==='secure'?'Open this HTTPS link in Safari or Chrome to use the camera.':'Unable to start AR. Check your connection and tap to try again.');}
@@ -140,8 +148,10 @@ async function showTap(){
   $('start').classList.add('ready');
  }catch(error){console.error(error);$('tap-art').textContent='Tap';$('start').classList.add('ready');}
 }
-if(new URLSearchParams(location.search).get('autostart')==='1'){
+{
  // Skip the tap model download and request the camera immediately.
  $('tap-art').textContent='Start AR';$('start').classList.add('ready');
  $('start').onclick();
-}else{showTap();}
+}
+
+window.addEventListener('message',event=>{if(event.source===parent&&event.origin===location.origin&&event.data==='friction-ar-stop'){message('');close();}});

@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+import * as THREE from './vendor/three/three.module.js';
 // Orient the entire vertical composition, rather than tilting words in separate rows.
 export function towerOrientation(anchorMatrix,cameraPosition,gravityCamera=null){
  const position=new THREE.Vector3(),rotation=new THREE.Quaternion(),scale=new THREE.Vector3();
