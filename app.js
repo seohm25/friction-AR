@@ -4,6 +4,7 @@ import { startMotion,stopMotion,readCameraGravity } from './motion.js';
 import { GLTFLoader } from './vendor/three/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from './vendor/meshopt_decoder.module.js';
 const $ = id => document.getElementById(id);
+let tapPreviewLoading=false;
 let mode='idle', ar, source, sourcePromise, models=[], session=0, stream;
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const status=s=>{$('tracking').textContent=s;$('tracking').hidden=!s;};
@@ -44,6 +45,7 @@ function close(){
  if(ar){ar.controller?.stopProcessVideo();ar.renderer.setAnimationLoop(null);ar.video?.remove();ar.anchors.forEach(a=>{a.group.visible=false;a.visible=false});}
  $('viewport').querySelectorAll('video').forEach(v=>v.remove());models=[];mode='idle';
  document.body.classList.remove('active');$('welcome').hidden=false;$('close').hidden=true;status('');busy(false);
+ if(!document.hidden)showTap();
  $('start').focus();
 }
 $('close').onclick=()=>{message('');close();if(parent!==window)parent.postMessage('friction-ar-close',location.origin);};
@@ -136,6 +138,8 @@ $('start').onclick=async()=>{
 };
 
 async function showTap(){
+ if(tapPreviewLoading||$('tap-art').querySelector('canvas'))return;
+ tapPreviewLoading=true;
  try{
   const gltf=await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).loadAsync('./assets/tap.glb');
   const scene=new THREE.Scene();addLights(scene);
@@ -144,13 +148,14 @@ async function showTap(){
   const group=new THREE.Group();group.add(model);group.scale.setScalar(2.6/Math.max(size.x,size.y));scene.add(group);
   const camera=new THREE.PerspectiveCamera(35,1.5,.01,100);camera.position.set(0,0,5.5);
   const renderer=new THREE.WebGLRenderer({alpha:true,antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(270,180);renderer.setClearColor(0,0);
-  $('tap-art').appendChild(renderer.domElement);renderer.render(scene,camera);
+  $('tap-art').textContent='';$('tap-art').appendChild(renderer.domElement);renderer.render(scene,camera);
   $('start').classList.add('ready');
  }catch(error){console.error(error);$('tap-art').textContent='Tap';$('start').classList.add('ready');}
+ finally{tapPreviewLoading=false;}
 }
 {
  // Skip the tap model download and request the camera immediately.
- $('tap-art').textContent='Start AR';$('start').classList.add('ready');
+ $('tap-art').textContent='Tap';$('start').classList.add('ready');
  $('start').onclick();
 }
 
