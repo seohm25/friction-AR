@@ -135,4 +135,8 @@ async function showTap(){
   $('start').classList.add('ready');
  }catch(error){console.error(error);$('tap-art').textContent='Tap';$('start').classList.add('ready');}
 }
-showTap();
+if(new URLSearchParams(location.search).get('autostart')==='1'){
+ // Skip the tap model download and request the camera immediately.
+ $('tap-art').textContent='Start AR';$('start').classList.add('ready');
+ $('start').onclick();
+}else{showTap();}
