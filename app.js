@@ -22,12 +22,15 @@ async function loadModel(){
   const box=new THREE.Box3().setFromObject(source), size=box.getSize(new THREE.Vector3()), center=box.getCenter(new THREE.Vector3());
   const scale=Math.min(1.12/size.x,1.9/size.y);
   source.updateMatrixWorld(true);
-  [...source.children].forEach((child,index)=>{
+  // Sort by displayed height so adjacent words turn in opposite directions.
+  const words=[...source.children].map(child=>({child,center:new THREE.Box3().setFromObject(child).getCenter(new THREE.Vector3())}));
+  words.sort((a,b)=>b.center.y-a.center.y);
+  words.forEach(({child,center},index)=>{
    const pivot=new THREE.Group();pivot.name='gesture-spin-'+index;
-   pivot.position.copy(new THREE.Box3().setFromObject(child).getCenter(new THREE.Vector3()));
+   pivot.position.copy(source.worldToLocal(center.clone()));
    source.add(pivot);pivot.attach(child);
-   // File order: Drag, Tap, Swipe, Zoom. Visual order alternates right/left.
-   pivot.userData.spinRate=[.26,-.23,-.22,.25][index%4];
+   // Rotate about each word's own vertical axis: a horizontal left/right turn.
+   pivot.userData.spinRate=[.48,-.42,.46,-.44][index%4];
   });
   source.position.sub(new THREE.Vector3(center.x,box.min.y,center.z));const normalized=new THREE.Group();normalized.add(source);normalized.scale.setScalar(scale);
   source=normalized;return source;
@@ -47,6 +50,8 @@ $('close').onclick=()=>{message('');close()};
 window.addEventListener('pagehide',close);
 document.addEventListener('visibilitychange',()=>{if(document.hidden && mode!=='idle'){close();message('Camera stopped. Tap to start again.')}});
 function pop(model){model.userData.started=performance.now();model.userData.lastFrame=0;model.userData.oriented=false;}
+// A shared animation clock survives poster loss/reacquisition on slower phones.
+const rotationEpoch=performance.now();
 function animateModels(){
  const now=performance.now();
  for(const model of models){
@@ -60,8 +65,8 @@ function animateModels(){
   const up=new THREE.Vector3(0,1,0).applyQuaternion(model.quaternion);
   const onWall=1-THREE.MathUtils.smoothstep(Math.abs(up.z),.45,.8);
   model.position.addScaledVector(up,-.82*onWall);
-  const elapsed=(now-model.userData.started)/1000;
-  model.traverse(part=>{if(part.userData.spinRate)part.rotation.y=reduced?0:elapsed*part.userData.spinRate;});
+  const elapsed=(now-rotationEpoch)/1000;
+  model.traverse(part=>{if(part.userData.spinRate){part.rotation.set(0,elapsed*part.userData.spinRate*(reduced ? 0.5 : 1),0);}});
  }
 }
 async function createAR(){
