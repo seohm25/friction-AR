@@ -11,3 +11,12 @@ html,body{background:#fff}#welcome{background:#fff}
 #start{height:208px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px}
 #tap-art{width:270px;height:180px;flex-shrink:0}
 .ar-caption{font-family:Arial,sans-serif;font-size:12px;font-weight:400;font-style:normal;color:#87ceeb;text-shadow:none;letter-spacing:.02em;line-height:20px}
+
+/* Loading/error fallback text only; the WebGL artwork keeps its own colors. */
+#tap-art{font-family:Arial,sans-serif;font-style:normal;font-weight:400;color:#87ceeb;text-shadow:none}
+
+/* Camera loading, tracking, and retry messages share the sky-blue text color. */
+#message,#tracking{color:#87ceeb}
+
+/* Camera/status instructions: sky-blue text with no panel behind it. */
+#tracking,#message{color:#87ceeb;background:transparent;border:0;border-radius:0;box-shadow:none;text-shadow:none}
